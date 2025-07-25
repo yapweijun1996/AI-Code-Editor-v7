@@ -10,6 +10,7 @@ export const GeminiChat = {
     isCancelled: false,
     chatSession: null,
     activeModelName: '',
+    activeMode: '',
     lastRequestTime: 0,
     rateLimit: 5000,
     rootDirectoryHandle: null,
@@ -58,14 +59,22 @@ export const GeminiChat = {
             const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const timeString = now.toLocaleString();
             const baseCodePrompt = `You are an expert AI programmer named Gemini. Your goal is to help users with their coding tasks. You have access to a file system, a terminal, and other tools to help you. Be concise and efficient. When asked to write code, just write the code without too much explanation unless asked. When you need to modify a file, use the 'rewrite_file' tool to overwrite the entire file content. CRITICAL RULE: After a tool is used, you MUST respond directly to the user with a summary of the action taken. Do not call another tool or just stay silent. You must reply. Always format your responses using Markdown. For code, use language-specific code blocks.`;
-            const basePlanPrompt = `You are a senior software architect named Gemini. Your goal is to help users plan their projects. When asked for a plan, break down the problem into clear, actionable steps. You can use mermaid syntax to create diagrams. Do not write implementation code unless specifically asked. CRITICAL RULE: After a tool is used, you MUST respond directly to the user with a summary of the action taken. Do not call another tool or just stay silent. You must reply. Always format your responses using Markdown.`;
-            const baseSearchPrompt = `You are a research assistant AI. Your primary function is to use the Google Search tool to find the most accurate and up-to-date information for any user query.\n\n**CRITICAL INSTRUCTION: You MUST use the Google Search tool for ANY query that requires external information. Do not rely on your internal knowledge. First, search, then answer.**\n\nCurrent user context:\n- Current Time: ${timeString}\n- Timezone: ${timeZone}\n\nCRITICAL RULE: After a tool is used, you MUST respond directly to the user with a summary of the action taken. Do not call another tool or just stay silent. You must reply. Always format your responses using Markdown, and cite your sources.`;
+            const newPlanPrompt = `You are a senior AI planner with web search capabilities. Your goal is to help users plan their projects by providing well-researched, strategic advice.
 
-            if (mode === 'search') {
-                allTools.push({ googleSearch: {} });
-                systemInstructionText = baseSearchPrompt;
-            } else if (mode === 'plan') {
-                systemInstructionText = basePlanPrompt;
+**CRITICAL INSTRUCTIONS:**
+1.  **Search First:** You MUST use the Google Search tool for any query that requires external information, data, or current events. Do not rely on your internal knowledge.
+2.  **Planning Focus:** Your primary function is to create plans, outlines, and strategies. Break down complex problems into clear, actionable steps. You can use mermaid syntax to create diagrams.
+3.  **No Code Implementation:** You are a planner, not a developer. You are not allowed to write or modify code.
+4.  **Cite Sources:** Always cite your sources when you use the search tool.
+5.  **Respond to User:** After a tool is used, you MUST respond directly to the user with a summary of the action taken. Do not call another tool or just stay silent. You must reply.
+
+**Current user context:**
+- Current Time: ${timeString}
+- Timezone: ${timeZone}`;
+
+            if (mode === 'plan') {
+                allTools = [{ googleSearch: {} }];
+                systemInstructionText = newPlanPrompt;
             } else {
                 systemInstructionText = baseCodePrompt;
             }
@@ -87,6 +96,7 @@ export const GeminiChat = {
             });
 
             this.activeModelName = modelName;
+            this.activeMode = mode;
             console.log(`New chat session started with model: ${modelName}, mode: ${mode}, and ${history.length} history parts.`);
         } catch (error) {
             console.error('Failed to start chat session:', error);
@@ -338,7 +348,8 @@ export const GeminiChat = {
 
     async sendMessage(chatInput, chatMessages, chatSendButton, chatCancelButton, thinkingIndicator, uploadedImage, clearImagePreview) {
         const selectedModel = document.getElementById('model-selector').value;
-        if (!this.chatSession || this.activeModelName !== selectedModel) {
+        const selectedMode = document.getElementById('agent-mode-selector').value;
+        if (!this.chatSession || this.activeModelName !== selectedModel || this.activeMode !== selectedMode) {
             let historyToPreserve = this.chatSession ? await this.chatSession.getHistory() : [];
             await this._restartSessionWithHistory(historyToPreserve);
         }
