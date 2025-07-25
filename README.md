@@ -10,7 +10,7 @@ The editor's architecture has been streamlined to use a local Node.js server, si
 
 *   **Local Node.js Server**: A lightweight `Express` server (`index.js`) now serves the `frontend` assets, making the application accessible at `http://localhost:3000`. This approach provides a stable and consistent runtime environment.
 
-*   **Client-Centric File Operations**: All core logic and file system interactions remain securely on the client-side in `frontend/app.js`. The application uses the browser's native **File System Access API**, ensuring that all file operations are handled directly and safely by the user's browser.
+*   **Client-Centric File Operations**: All core logic and file system interactions remain securely on the client-side in `frontend/js/main.js`. The application uses the browser's native **File System Access API**, ensuring that all file operations are handled directly and safely by the user's browser.
 
 *   **Stateful Experience with IndexedDB**: The application continues to use IndexedDB to persist user data locally, including API keys and the handle to the last used project directory.
 
@@ -19,9 +19,17 @@ The editor's architecture has been streamlined to use a local Node.js server, si
 ## Features
 
 *   **Monaco Editor**: Integrates the same powerful editor used in VS Code, providing a rich and familiar coding environment with syntax highlighting and advanced editing features.
-*   **Gemini AI Agent**: A stateful AI assistant powered by the Google Gemini API with official tool-calling capabilities. The agent can understand context, use tools, and assist with tasks like code generation, file manipulation, and project-wide searches.
+*   **Gemini AI Agent**: A stateful AI assistant powered by the **Google Gemini API** (`v1beta`) and its official tool-calling capabilities. This ensures a reliable and predictable conversational loop:
+    1.  **Tool Declaration**: The frontend formally declares its available functions to the Gemini API.
+    2.  **Function Call**: The AI responds with a structured `functionCall` when it needs to use a tool.
+    3.  **Frontend Execution**: The browser executes the requested function (e.g., reading a file).
+    4.  **Function Response**: The result is sent back to the AI in a formal `functionResponse`.
+    5.  **Final Answer**: The AI provides a natural-language response to the user.
 *   **Resizable Panels**: A flexible UI with resizable panels for the file tree, editor, and AI chat.
-*   **Intelligent Tab Management**: Open, close, and switch between multiple files. The system is smart enough to recognize already-open files and simply switch to the correct tab instead of creating duplicates.
+*   **Intelligent Tab and File Management**:
+    *   **Path-Based Identification**: Open files are tracked by their unique file path, which prevents the creation of duplicate tabs when a file is accessed multiple times.
+    *   **Automatic Focus**: When the AI uses a tool like `read_file` or `rewrite_file`, the application automatically opens the relevant file or switches to its existing tab, providing a seamless workflow.
+    *   **Stateful UI**: The file tree and open tabs are rendered dynamically, providing a clear and consistent view of the project state.
 *   **Automatic File Opening**: When the AI agent reads, creates, or rewrites a file, it is automatically opened or focused, providing immediate visibility into the agent's actions.
 *   **AST-Powered Code Analysis**: The AI can use the `analyze_code` tool to parse JavaScript code into an Abstract Syntax Tree (AST), enabling a deep, structural understanding of the code for more precise refactoring and analysis.
 *   **Multimodal Input**: The AI chat supports both text and image uploads, allowing you to ask questions about visual content.
@@ -69,30 +77,31 @@ The management scripts also provide options to **stop**, **restart**, and **moni
 
 ---
 
-## Workflow Diagram
-
-This diagram illustrates the core interaction loop between the user, the frontend, the AI agent, and the local file system.
+## AST-Powered Code Analysis Workflow
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Frontend (Browser)
     participant AI Agent (Gemini)
-    participant File System API
+    participant Acorn (AST Parser)
 
-    User->>Frontend (Browser): Submits a prompt
-    Frontend (Browser)->>AI Agent (Gemini): Sends prompt for processing
-    alt AST-Powered Analysis
-        AI Agent (Gemini)-->>Frontend (Browser): Requests tool call (analyze_code)
-        Frontend (Browser)->>Frontend (Browser): Executes tool (parses AST)
-        Frontend (Browser)-->>AI Agent (Gemini): Sends analysis result
-    else Standard File Operation
-        AI Agent (Gemini)-->>Frontend (Browser): Requests tool call (e.g., read_file)
-        Frontend (Browser)->>File System API: Executes tool (reads file)
-        File System API-->>Frontend (Browser): Returns file content
-        Frontend (Browser)->>AI Agent (Gemini): Sends tool result
-    end
-    AI Agent (Gemini)-->>Frontend (Browser): Sends final answer
+    User->>Frontend (Browser): "Refactor the 'getUser' function"
+    Frontend (Browser)->>AI Agent (Gemini): Sends prompt
+    
+    AI Agent (Gemini)-->>Frontend (Browser): Request tool call: analyze_code('app.js')
+    
+    Frontend (Browser)->>Acorn (AST Parser): Parses content of app.js
+    Acorn (AST Parser)-->>Frontend (Browser): Returns AST
+    
+    Frontend (Browser)->>Frontend (Browser): Extracts functions, classes, etc.
+    Frontend (Browser)-->>AI Agent (Gemini): Sends analysis result
+    
+    AI Agent (Gemini)-->>Frontend (Browser): Request tool call: rewrite_file(...)
+    Frontend (Browser)->>Frontend (Browser): Executes file rewrite
+    Frontend (Browser)-->>AI Agent (Gemini): Sends success message
+    
+    AI Agent (Gemini)-->>Frontend (Browser): "I have refactored the function."
     Frontend (Browser)-->>User: Displays final answer
 ```
 
