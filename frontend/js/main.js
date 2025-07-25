@@ -242,4 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tabBarContainer.scrollLeft += event.deltaY;
         }
     });
+
+    // Relayout panels after a short delay to fix initialization issue
+    setTimeout(() => UI.relayout(editor), 100);
 });

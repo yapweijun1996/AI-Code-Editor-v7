@@ -14,6 +14,15 @@ export function initResizablePanels(editor) {
     });
 }
 
+export function relayout(editor) {
+    if (window.splitInstance) {
+        window.splitInstance.setSizes([15, 55, 30]);
+    }
+    if (editor) {
+        editor.layout();
+    }
+}
+
 export function renderTree(treeData, onFileSelect) {
     $('#file-tree')
     .on('select_node.jstree', (e, data) => {
